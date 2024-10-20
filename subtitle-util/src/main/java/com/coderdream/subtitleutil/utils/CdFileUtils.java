@@ -1,7 +1,10 @@
 package com.coderdream.subtitleutil.utils;
 
 import cn.hutool.core.collection.CollectionUtil;
+import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.util.StrUtil;
 import com.coderdream.subtitleutil.bean.ScriptEntity;
+import com.coderdream.subtitleutil.bean.SubtitleBaseEntity;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -204,5 +207,93 @@ public class CdFileUtils {
         }
 
         return result;
+    }
+
+    public static List<SubtitleBaseEntity> readSrcFileContent(String... fileName) {
+        List<String> stringList = new ArrayList<>();
+        if (fileName == null) {
+            return null;
+        }
+        File file = new File(fileName[0]);//定义一个file对象，用来初始化FileReader
+        FileReader reader;//定义一个fileReader对象，用来初始化BufferedReader
+        try {
+            reader = new FileReader(file);
+            BufferedReader bReader = new BufferedReader(reader);//new一个BufferedReader对象，将文件内容读取到缓存
+//            StringBuilder sb = new StringBuilder();//定义一个字符串缓存，将字符串存放缓存中
+            String s = "";
+            while ((s = bReader.readLine()) != null) {//逐行读取文件内容，不读取换行符和末尾的空格
+//                sb.append(s + "\n");//将读取的字符串添加换行符后累加存放在缓存中
+                if (fileName.length == 0) {
+                    s = s.replaceAll("“", "\"");
+
+                    s = s.replaceAll("”", "\"");
+                }
+
+                stringList.add(processStr(s.trim()));
+//                System.out.println(s);
+            }
+            stringList.add("");// 补最后一行的空格
+            bReader.close();
+//            String str = sb.toString();
+//            System.out.println(str);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        List<SubtitleBaseEntity> result = new ArrayList<>();
+        int firstSpaceIndex = 0;
+        String subIndexStr = "";
+        SubtitleBaseEntity subtitleBaseEntity;
+        if (CollectionUtil.isNotEmpty(stringList)) {
+
+            int size = stringList.size();
+            if (size % 4 != 0 && StrUtil.isEmpty(stringList.get(size - 1)) && StrUtil.isEmpty(
+                stringList.get(size - 2))) {
+                stringList.remove(size - 1);
+            }
+
+            for (int i = 0; i < stringList.size(); i++) {
+                if (StrUtil.isEmpty(stringList.get(i))) {
+                    subtitleBaseEntity = new SubtitleBaseEntity();
+                    if (firstSpaceIndex == 0) {
+                        subIndexStr = stringList.get(0);
+                        subtitleBaseEntity.setSubIndex(Integer.parseInt(processStr(subIndexStr)));
+                        subtitleBaseEntity.setTimeStr(processStr(stringList.get(1)));
+                        subtitleBaseEntity.setSubtitle(processStr(stringList.get(2)));
+                    } else {
+                        if (StrUtil.isNotEmpty(stringList.get(firstSpaceIndex))) {
+                            subtitleBaseEntity.setSubIndex(
+                                Integer.parseInt(processStr(stringList.get(firstSpaceIndex))));
+                        }
+                        subtitleBaseEntity.setTimeStr(processStr(stringList.get(firstSpaceIndex + 1)));
+                        subtitleBaseEntity.setSubtitle(processStr(stringList.get(firstSpaceIndex + 2)));
+                    }
+                    firstSpaceIndex = i + 1;
+
+                    result.add(subtitleBaseEntity);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    public static final String UTF8_BOM = "\uFEFF";
+
+    public static String processStr(String string) {
+        if (string.startsWith(UTF8_BOM)) {
+            return string = string.substring(1);
+        }
+        return string;
+    }
+
+    public static List<String> readFileAddEndEmptyList(String newFileName) {
+        List<String> stringList = FileUtil.readLines(newFileName, "UTF-8");
+        // 文本末尾补空行
+        if (CollectionUtil.isNotEmpty(stringList) && StrUtil.isNotEmpty(stringList.get(stringList.size() - 1))) {
+            stringList.add("");
+        }
+
+        return stringList;
     }
 }
